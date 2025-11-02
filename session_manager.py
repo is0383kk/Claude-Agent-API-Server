@@ -17,7 +17,7 @@ from models import MessageInfo, SessionStatus
 
 class SessionInfo:
     """セッションに関する情報を管理するクラス
-    
+
     セッションのID、状態、設定、メッセージ履歴、結果などを保持します。
     """
 
@@ -39,7 +39,7 @@ class SessionInfo:
 
     def add_message(self, message: Message) -> None:
         """セッションにメッセージを追加する
-        
+
         Args:
             message: 追加するメッセージオブジェクト
         """
@@ -52,10 +52,10 @@ class SessionInfo:
 
     def _serialize_message(self, message: Message) -> Any:
         """メッセージをJSON互換形式にシリアライズする
-        
+
         Args:
             message: シリアライズするメッセージオブジェクト
-            
+
         Returns:
             JSON互換形式のメッセージデータ
         """
@@ -104,7 +104,7 @@ class SessionInfo:
 
     def get_duration_ms(self) -> Optional[int]:
         """セッションの実行時間をミリ秒単位で取得する
-        
+
         Returns:
             実行時間（ミリ秒）、または未実行の場合はNone
         """
@@ -116,11 +116,11 @@ class SessionInfo:
 
 class SessionManager:
     """
-Claude Agent SDKセッションのマネージャークラス
+    Claude Agent SDKセッションのマネージャークラス
 
-セッションの作成、実行、状態管理、キャンセル、およびクリーンアップ機能を提供します。
-スレッドセーフな操作を保証するため、非同期ロックを使用します。
-"""
+    セッションの作成、実行、状態管理、キャンセル、およびクリーンアップ機能を提供します。
+    スレッドセーフな操作を保証するため、非同期ロックを使用します。
+    """
 
     def __init__(self):
         self.sessions: Dict[str, SessionInfo] = {}
@@ -128,22 +128,25 @@ Claude Agent SDKセッションのマネージャークラス
 
     def generate_session_id(self) -> str:
         """一意のセッションIDを生成する
-        
+
         Returns:
             UUID形式の一意なセッションID
         """
         return str(uuid.uuid4())
 
     async def create_session(
-        self, prompt: str, options: ClaudeAgentOptions, resume_session_id: Optional[str] = None
+        self,
+        prompt: str,
+        options: ClaudeAgentOptions,
+        resume_session_id: Optional[str] = None,
     ) -> SessionInfo:
         """新しいセッションを作成し、エージェントを開始する
-        
+
         Args:
             prompt: エージェントに送信するプロンプト
             options: Claude Agent SDKの設定オプション
             resume_session_id: 再開するセッションID（オプション）
-            
+
         Returns:
             作成または再開されたセッション情報
         """
@@ -170,66 +173,74 @@ Claude Agent SDKセッションのマネージャークラス
         self, session_id: str, prompt: str, options: ClaudeAgentOptions
     ) -> SessionInfo:
         """既存セッションをClaude Agent SDKのresume機能で再開する
-        
+
         既存セッションがあり、ClaudeセッションIDが記録されている場合は
         Claude Agent SDKのresume機能を使用して会話を継続します。
-        
+
         Args:
             session_id: 再開するセッションID
             prompt: エージェントに送信するプロンプト
             options: Claude Agent SDKの設定オプション
-            
+
         Returns:
             再開または新規作成されたセッション情報
         """
         async with self._lock:
             existing_session = self.sessions.get(session_id)
-            
+
             if existing_session and existing_session.claude_session_id:
                 # 既存セッションが存在し、ClaudeセッションIDがある場合
                 if existing_session.status in [SessionStatus.RUNNING]:
                     # 実行中の場合はエラーを返す
                     raise ValueError(f"セッション {session_id} は現在実行中です")
-                
+
                 # Claude Agent SDKのresume機能を使用してセッションを再開
-                print(f"DEBUG: Resuming session {session_id} with Claude session ID {existing_session.claude_session_id}")
-                
+                print(
+                    f"DEBUG: Resuming session {session_id} with Claude session ID {existing_session.claude_session_id}"
+                )
+
                 # resumeパラメータを設定
                 options.resume = existing_session.claude_session_id
-                
+
                 # セッション情報を更新
                 existing_session.status = SessionStatus.PENDING
-                existing_session.prompt = f"{existing_session.prompt}\n\n--- セッション再開 ---\n{prompt}"
+                existing_session.prompt = (
+                    f"{existing_session.prompt}\n\n--- セッション再開 ---\n{prompt}"
+                )
                 existing_session.options = options
                 existing_session.error = None
                 existing_session.start_time = None
                 existing_session.end_time = None
-                
+
                 # 既存のタスクがある場合はキャンセル
                 if existing_session.task and not existing_session.task.done():
                     existing_session.task.cancel()
-                
+
                 session = existing_session
             else:
                 # 既存セッションがないか、ClaudeセッションIDがない場合はエラー
                 if existing_session:
-                    raise ValueError(f"セッション {session_id} にClaudeセッションIDが記録されていません。再開できません。")
+                    raise ValueError(
+                        f"セッション {session_id} にClaudeセッションIDが記録されていません。再開できません。"
+                    )
                 else:
                     raise ValueError(f"セッション {session_id} が見つかりません。")
-            
-            print(f"DEBUG: Session {session_id} ready for resume with Claude session ID, total sessions: {len(self.sessions)}")
-        
+
+            print(
+                f"DEBUG: Session {session_id} ready for resume with Claude session ID, total sessions: {len(self.sessions)}"
+            )
+
         # バックグラウンドでエージェントを開始
         session.task = asyncio.create_task(self._run_agent(session, prompt))
-        
+
         return session
 
     async def _run_agent(self, session: SessionInfo, prompt: str) -> None:
         """バックグラウンドでエージェントを実行する
-        
+
         Claude SDKクライアントを作成し、プロンプトを送信し、
         メッセージを受信してセッションを管理します。
-        
+
         Args:
             session: 実行するセッションの情報
             prompt: エージェントに送信するプロンプト
@@ -263,11 +274,17 @@ Claude Agent SDKセッションのマネージャークラス
 
                 # メッセージ構造をより詳しく理解する
                 print(f"DEBUG: Full message: {message}")
-                
+
                 # ClaudeセッションIDを早期に取得（最初のメッセージから取得できる場合）
-                if not session.claude_session_id and hasattr(message, "session_id") and message.session_id:
+                if (
+                    not session.claude_session_id
+                    and hasattr(message, "session_id")
+                    and message.session_id
+                ):
                     session.claude_session_id = message.session_id
-                    print(f"DEBUG: Early capture of Claude session ID: {session.claude_session_id}")
+                    print(
+                        f"DEBUG: Early capture of Claude session ID: {session.claude_session_id}"
+                    )
 
                 # エラーメッセージかどうかをチェック
                 if hasattr(message, "is_error") and message.is_error:
@@ -324,14 +341,18 @@ Claude Agent SDKセッションのマネージャークラス
                             if hasattr(message, "total_cost_usd")
                             else None
                         ),
-                        "usage": session._serialize_value(message.usage) if hasattr(message, "usage") else None,
+                        "usage": session._serialize_value(message.usage)
+                        if hasattr(message, "usage")
+                        else None,
                     }
-                    
+
                     # Claude Agent SDKが生成した実際のセッションIDを保存（resume用）
                     if hasattr(message, "session_id") and message.session_id:
                         session.claude_session_id = message.session_id
-                        print(f"DEBUG: Saved Claude session ID for resume: {session.claude_session_id}")
-                    
+                        print(
+                            f"DEBUG: Saved Claude session ID for resume: {session.claude_session_id}"
+                        )
+
                     break
 
         except asyncio.CancelledError:
@@ -344,6 +365,7 @@ Claude Agent SDKセッションのマネージャークラス
             print(f"DEBUG: Exception in _run_agent: {e}")
             print(f"DEBUG: Exception type: {type(e)}")
             import traceback
+
             print(f"DEBUG: Full traceback: {traceback.format_exc()}")
         finally:
             session.end_time = datetime.now()
@@ -356,10 +378,10 @@ Claude Agent SDKセッションのマネージャークラス
 
     async def get_session(self, session_id: str) -> Optional[SessionInfo]:
         """セッションIDでセッションを取得する
-        
+
         Args:
             session_id: 取得するセッションのID
-            
+
         Returns:
             セッション情報、または見つからない場合はNone
         """
@@ -368,10 +390,10 @@ Claude Agent SDKセッションのマネージャークラス
 
     async def cancel_session(self, session_id: str) -> bool:
         """実行中のセッションをキャンセルする
-        
+
         Args:
             session_id: キャンセルするセッションのID
-            
+
         Returns:
             キャンセルが成功した場合True、そうでない場合False
         """
@@ -400,7 +422,7 @@ Claude Agent SDKセッションのマネージャークラス
 
     async def list_sessions(self) -> List[str]:
         """すべてのセッションIDを一覧表示する
-        
+
         Returns:
             セッションIDのリスト
         """
@@ -413,7 +435,7 @@ Claude Agent SDKセッションのマネージャークラス
 
     async def get_all_sessions(self) -> List[dict]:
         """すべてのセッションを詳細情報付きで取得する
-        
+
         Returns:
             セッションの詳細情報を含む辞書のリスト
         """
@@ -443,12 +465,12 @@ Claude Agent SDKセッションのマネージャークラス
 
     async def cleanup_old_sessions(self, max_age_hours: int = 24) -> int:
         """古いセッションをクリーンアップする
-        
+
         終了時刻が指定された時間より古いセッションを削除します。
-        
+
         Args:
             max_age_hours: 保持するセッションの最大経過時間（デフォルト: 24時間）
-            
+
         Returns:
             削除されたセッション数
         """

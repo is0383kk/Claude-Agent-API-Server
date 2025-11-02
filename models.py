@@ -67,7 +67,8 @@ class ExecuteRequest(BaseModel):
         None, description="使用を禁止するツール名のリスト"
     )
     resume_session_id: Optional[str] = Field(
-        None, description="再開するセッションID。指定された場合、同一セッションIDで既存セッションを再開"
+        None,
+        description="再開するセッションID。指定された場合、同一セッションIDで既存セッションを再開",
     )
 
 
