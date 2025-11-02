@@ -323,10 +323,10 @@ Webインターフェースを提供します。エージェントの実行、�
                     if (!requestData.resume_session_id) {
                         document.getElementById('sessionId').value = result.session_id;
                     }
-                    
+
                     // 自動でセッション一覧を更新
                     setTimeout(loadSessions, 1000);
-                    
+
                     // セッション再開の場合は自動でステータスをチェック
                     if (requestData.resume_session_id) {
                         setTimeout(() => {
@@ -337,7 +337,7 @@ Webインターフェースを提供します。エージェントの実行、�
                                 // セッション一覧も更新
                                 loadSessions();
                             }, 3000);
-                            
+
                             // 60秒後に自動チェックを停止
                             setTimeout(() => {
                                 clearInterval(statusCheckInterval);
@@ -363,17 +363,17 @@ Webインターフェースを提供します。エージェントの実行、�
 
             try {
                 const response = await fetch(`${API_BASE}/status/${sessionId}`);
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const result = await response.json();
 
                 const responseDiv = document.getElementById('statusResponse');
                 responseDiv.style.display = 'block';
                 responseDiv.textContent = JSON.stringify(result, null, 2);
-                
+
                 // ステータスが完了したらセッション一覧を更新
                 if (result.status === 'completed' || result.status === 'error' || result.status === 'cancelled') {
                     setTimeout(loadSessions, 500);
